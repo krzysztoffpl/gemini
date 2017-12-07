@@ -1,7 +1,6 @@
 'use strict';
 
 const Promise = require('bluebird');
-const q = require('bluebird-q');
 const pool = require('lib/browser-pool');
 const Config = require('lib/config');
 const Events = require('lib/constants/events');
@@ -196,15 +195,6 @@ describe('runner', () => {
                 return run(runner).then(() => assert.callOrder(stateProcessor.prepare, BrowserRunner.prototype.run));
             });
 
-            it('should emit "BEGIN_SESSION" before running of tests', () => {
-                const runner = createRunner();
-                const onBeginSession = sinon.spy().named('onBeginSession');
-
-                runner.on(Events.BEGIN_SESSION, onBeginSession);
-
-                return run(runner).then(() => assert.calledOnce(onBeginSession));
-            });
-
             it('should create all browser runners', () => {
                 pool.create.returns('some-pool');
 
@@ -260,50 +250,41 @@ describe('runner', () => {
                     .then(() => assert.equal(testsStatistic.total, 2));
             });
 
+            it('should include tests state data emitted from main runner to the statistic', () => {
+                const runner = createRunner();
+
+                runner.emit(Events.ERROR, makeStateResult({name: 'some-name'}));
+
+                let testsStatistic;
+                runner.on(Events.END, (stat) => testsStatistic = stat);
+
+                return run(runner)
+                    .then(() => assert.equal(testsStatistic.total, 1));
+            });
+
             it('should not be immediately rejected if running of tests in some browser was rejected', () => {
                 const runner = createRunner();
-                const rejected = q.reject();
-                const delayed = q.delay(50);
+                const spy = sinon.spy();
 
                 runner.config.getBrowserIds.returns(['bro1', 'bro2']);
 
-                BrowserRunner.prototype.run.onFirstCall().returns(rejected);
-                BrowserRunner.prototype.run.onSecondCall().returns(delayed);
+                BrowserRunner.prototype.run.onFirstCall().callsFake(() => Promise.reject());
+                BrowserRunner.prototype.run.onSecondCall().callsFake(() => Promise.delay(50).then(spy));
 
-                return run(runner).catch(() => assert.isFalse(delayed.isPending()));
+                return run(runner)
+                    .catch(() => {})
+                    .then(() => assert.called(spy));
             });
 
             it('should be rejected with the first error if running of tests in several browsers were rejected', () => {
                 const runner = createRunner();
-                const firstReject = q.reject('first-runner');
-                const secondReject = q.reject('second-runner');
 
                 runner.config.getBrowserIds.returns(['bro1', 'bro2']);
 
-                BrowserRunner.prototype.run.onFirstCall().returns(firstReject);
-                BrowserRunner.prototype.run.onSecondCall().returns(secondReject);
+                BrowserRunner.prototype.run.onFirstCall().callsFake(() => Promise.reject('first-runner'));
+                BrowserRunner.prototype.run.onSecondCall().callsFake(() => Promise.reject('second-runner'));
 
                 return assert.isRejected(run(runner), /first-runner/);
-            });
-
-            it('should emit "END_SESSION" event after running of tests', () => {
-                const runner = createRunner();
-                const onEndSession = sinon.spy().named('onEndSession');
-
-                runner.on(Events.END_SESSION, onEndSession);
-
-                return run(runner).then(() => assert.callOrder(BrowserRunner.prototype.run, onEndSession));
-            });
-
-            it('should unconditionally emit "END_SESSION" event even if running of tests was rejected', () => {
-                const runner = createRunner();
-                const onEndSession = sinon.spy().named('onEndSession');
-
-                runner.on(Events.END_SESSION, onEndSession);
-
-                BrowserRunner.prototype.run.returns(q.reject());
-
-                return run(runner).catch(() => assert.calledOnce(onEndSession));
             });
 
             it('should collect coverage', () => {
@@ -315,7 +296,7 @@ describe('runner', () => {
             it('should be rejected if collecting of coverage fails', () => {
                 const runner = createRunner({config: stubConfig({isCoverageEnabled: true})});
 
-                Coverage.prototype.processStats.returns(q.reject());
+                Coverage.prototype.processStats.rejects();
 
                 return assert.isRejected(run(runner));
             });
@@ -364,9 +345,11 @@ describe('runner', () => {
 
                 runner.on(Events.END, onEnd);
 
-                BrowserRunner.prototype.run.returns(q.reject());
+                BrowserRunner.prototype.run.callsFake(() => Promise.reject());
 
-                return run(runner).catch(() => assert.calledOnce(onEnd));
+                return run(runner)
+                    .catch(() => {})
+                    .then(() => assert.calledOnce(onEnd));
             });
 
             it('should emit "END_RUNNER" event', () => {
@@ -404,9 +387,11 @@ describe('runner', () => {
 
                 runner.on(Events.END_RUNNER, onEndRunner);
 
-                BrowserRunner.prototype.run.returns(q.reject());
+                BrowserRunner.prototype.run.callsFake(() => Promise.reject());
 
-                return run(runner).catch(() => assert.calledOnce(onEndRunner));
+                return run(runner)
+                    .catch(() => {})
+                    .then(() => assert.calledOnce(onEndRunner));
             });
 
             it('should wait until all "END_RUNNER" handlers have finished', () => {
@@ -484,13 +469,12 @@ describe('runner', () => {
                     Events.BEGIN_STATE,
                     Events.END_STATE,
                     Events.INFO,
-                    Events.WARNING,
                     Events.ERROR
                 ].forEach((event) => testPassthrough(event));
             });
 
             [
-                Events.CAPTURE,
+                Events.TEST_RESULT,
                 Events.UPDATE_RESULT
             ].forEach((event) => {
                 describe(`on ${event}`, () => {
@@ -498,40 +482,6 @@ describe('runner', () => {
 
                     testCoverage(event);
                 });
-            });
-
-            describe('on testResult', () => {
-                testPassthrough(Events.TEST_RESULT, 'should passthrough "testResult" event');
-
-                it('should passthrough "endTest" event', () => {
-                    stubBrowserRunner((runner) => runner.emit(Events.TEST_RESULT, {foo: 'bar'}));
-
-                    const runner = createRunner();
-                    const onEndTest = sinon.spy().named('onEndTest');
-
-                    runner.on(Events.END_TEST, onEndTest);
-
-                    return run(runner)
-                        .then(() => {
-                            assert.calledOnce(onEndTest);
-                            assert.calledWith(onEndTest, {foo: 'bar'});
-                        });
-                });
-
-                it('should emit "testResult" event after "endTest" one', () => {
-                    stubBrowserRunner((runner) => runner.emit(Events.TEST_RESULT));
-
-                    const runner = createRunner();
-                    const onEndTest = sinon.spy().named('onEndTest');
-                    const onTestResult = sinon.spy().named('onTestResult');
-
-                    runner.on(Events.END_TEST, onEndTest);
-                    runner.on(Events.TEST_RESULT, onTestResult);
-
-                    return run(runner).then(() => assert.callOrder(onEndTest, onTestResult));
-                });
-
-                testCoverage(Events.TEST_RESULT);
             });
         });
     });

@@ -2,6 +2,147 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+<a name="5.1.1"></a>
+## [5.1.1](https://github.com/gemini-testing/gemini/compare/v5.1.0...v5.1.1) (2017-12-07)
+
+
+### Bug Fixes
+
+* allow unknown options before parsing config file ([98a5d5f](https://github.com/gemini-testing/gemini/commit/98a5d5f))
+
+
+
+<a name="5.1.0"></a>
+# [5.1.0](https://github.com/gemini-testing/gemini/compare/v5.0.1...v5.1.0) (2017-12-06)
+
+
+### Features
+
+* allow to extend cli parser via CLI event ([81fb51f](https://github.com/gemini-testing/gemini/commit/81fb51f))
+
+
+
+<a name="5.0.1"></a>
+## [5.0.1](https://github.com/gemini-testing/gemini/compare/v5.0.0...v5.0.1) (2017-12-05)
+
+
+### Bug Fixes
+
+* validate timeout type in wait element actions ([007a836](https://github.com/gemini-testing/gemini/commit/007a836))
+
+
+
+<a name="5.0.0"></a>
+# [5.0.0](https://github.com/gemini-testing/gemini/compare/v5.0.0-alpha.12...v5.0.0) (2017-12-01)
+
+
+### Bug Fixes
+
+* Fixed not checking if dragTo is a valid element ([13566a1](https://github.com/gemini-testing/gemini/commit/13566a1))
+
+
+### Features
+
+* emit async INIT event instead of async plugins load ([b21aa58](https://github.com/gemini-testing/gemini/commit/b21aa58))
+* remove backwards compatibility for passing grep to readTests ([ed4ece5](https://github.com/gemini-testing/gemini/commit/ed4ece5))
+* remove bluebird-q compatibility layer ([7844620](https://github.com/gemini-testing/gemini/commit/7844620))
+* remove deprecated BEGIN_SESSION and END_SESSION events ([2c22d1d](https://github.com/gemini-testing/gemini/commit/2c22d1d))
+* remove deprecated CAPTURE event ([d06a913](https://github.com/gemini-testing/gemini/commit/d06a913))
+* remove deprecated END_TEST event ([9c7c8e2](https://github.com/gemini-testing/gemini/commit/9c7c8e2))
+* remove deprecated WARNING event ([c906b1f](https://github.com/gemini-testing/gemini/commit/c906b1f))
+* remove q-promise-utils ([67b3682](https://github.com/gemini-testing/gemini/commit/67b3682))
+
+
+
+<a name="5.0.0-alpha.12"></a>
+# [5.0.0-alpha.12](https://github.com/gemini-testing/gemini/compare/v5.0.0-alpha.11...v5.0.0-alpha.12) (2017-11-02)
+
+
+### Bug Fixes
+
+* load plugins only once ([a56e39b](https://github.com/gemini-testing/gemini/commit/a56e39b))
+
+
+
+<a name="5.0.0-alpha.11"></a>
+# [5.0.0-alpha.11](https://github.com/gemini-testing/gemini/compare/v5.0.0-alpha.10...v5.0.0-alpha.11) (2017-11-01)
+
+
+### Features
+
+* AFTER_TESTS_READ event with suite tree ([c67b644](https://github.com/gemini-testing/gemini/commit/c67b644))
+* wait for plugins load ([340286f](https://github.com/gemini-testing/gemini/commit/340286f))
+
+
+
+<a name="5.0.0-alpha.10"></a>
+# [5.0.0-alpha.10](https://github.com/gemini-testing/gemini/compare/v5.0.0-alpha.9...v5.0.0-alpha.10) (2017-10-31)
+
+
+
+<a name="5.0.0-alpha.9"></a>
+# [5.0.0-alpha.9](https://github.com/gemini-testing/gemini/compare/v5.0.0-alpha.7...v5.0.0-alpha.9) (2017-10-19)
+
+
+### Bug Fixes
+
+* **errors:** stacktraces of custom errors should include error message ([63eb59b](https://github.com/gemini-testing/gemini/commit/63eb59b))
+* pass current image path to reference image error ([968fe9a](https://github.com/gemini-testing/gemini/commit/968fe9a))
+
+
+### Features
+
+* drop node[@4](https://github.com/4) support ([e6dc2f8](https://github.com/gemini-testing/gemini/commit/e6dc2f8))
+
+
+
+<a name="5.0.0-alpha.8"></a>
+# [5.0.0-alpha.8](https://github.com/gemini-testing/gemini/compare/v5.0.0-alpha.7...v5.0.0-alpha.8) (2017-08-31)
+
+
+### Bug Fixes
+
+* **errors:** stacktraces of custom errors should include error message ([63eb59b](https://github.com/gemini-testing/gemini/commit/63eb59b))
+* pass current image path to reference image error ([968fe9a](https://github.com/gemini-testing/gemini/commit/968fe9a))
+
+
+
+<a name="5.0.0-alpha.7"></a>
+# [5.0.0-alpha.7](https://github.com/gemini-testing/gemini/compare/v5.0.0-alpha.6...v5.0.0-alpha.7) (2017-08-28)
+
+
+
+<a name="5.0.0-alpha.6"></a>
+# [5.0.0-alpha.6](https://github.com/gemini-testing/gemini/compare/v5.0.0-alpha.5...v5.0.0-alpha.6) (2017-08-02)
+
+
+
+<a name="5.0.0-alpha.5"></a>
+# [5.0.0-alpha.5](https://github.com/gemini-testing/gemini/compare/v5.0.0-alpha.4...v5.0.0-alpha.5) (2017-07-11)
+
+
+### Bug Fixes
+
+* tests statistic should listen events on main runner ([e676c3a](https://github.com/gemini-testing/gemini/commit/e676c3a))
+
+
+
+<a name="5.0.0-alpha.4"></a>
+# [5.0.0-alpha.4](https://github.com/gemini-testing/gemini/compare/v5.0.0-alpha.3...v5.0.0-alpha.4) (2017-07-04)
+
+
+### Bug Fixes
+
+* incorrect .js config resolving ([db6b539](https://github.com/gemini-testing/gemini/commit/db6b539))
+
+
+### Features
+
+* add method 'shouldSkip(browserId)' to suite instance ([bad551c](https://github.com/gemini-testing/gemini/commit/bad551c))
+* provide the ability to modify retries count from plugins ([deafd55](https://github.com/gemini-testing/gemini/commit/deafd55))
+
+
+
 <a name="5.0.0-alpha.3"></a>
 # [5.0.0-alpha.3](https://github.com/gemini-testing/gemini/compare/v5.0.0-alpha.2...v5.0.0-alpha.3) (2017-06-08)
 

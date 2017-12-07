@@ -73,51 +73,44 @@ describe('gemini', () => {
 
     afterEach(() => sandbox.restore());
 
-    it('should passthrough runner events', () => {
-        const runner = new EventEmitter();
-        sandbox.stub(Runner, 'create').returns(runner);
+    [
+        Events.START_RUNNER,
+        Events.END_RUNNER,
+        Events.BEGIN,
+        Events.END,
 
-        const gemini = initGemini({});
-        gemini.test();
+        Events.RETRY,
 
-        [
-            Events.START_RUNNER,
-            Events.END_RUNNER,
-            Events.BEGIN,
-            Events.END,
+        Events.START_BROWSER,
+        Events.STOP_BROWSER,
 
-            Events.BEGIN_SESSION,
-            Events.END_SESSION,
+        Events.BEGIN_SUITE,
+        Events.END_SUITE,
 
-            Events.RETRY,
+        Events.SKIP_STATE,
+        Events.BEGIN_STATE,
+        Events.END_STATE,
 
-            Events.START_BROWSER,
-            Events.STOP_BROWSER,
+        Events.INFO,
+        Events.ERROR,
 
-            Events.BEGIN_SUITE,
-            Events.END_SUITE,
+        Events.TEST_RESULT,
+        Events.UPDATE_RESULT
+    ].forEach((event) => {
+        it(`should passthrough '${event}' runner event`, () => {
+            const runner = new EventEmitter();
+            runner.run = () => {
+                runner.emit(event, 'foo');
+                return Promise.resolve();
+            };
+            sandbox.stub(Runner, 'create').returns(runner);
 
-            Events.SKIP_STATE,
-            Events.BEGIN_STATE,
-            Events.END_STATE,
-
-            Events.INFO,
-            Events.WARNING,
-            Events.ERROR,
-
-            Events.END_TEST,
-            Events.CAPTURE,
-
-            Events.TEST_RESULT,
-            Events.UPDATE_RESULT
-        ].forEach((event, name) => {
-            const spy = sinon.spy().named(`${name} handler`);
+            const gemini = initGemini({});
+            const spy = sinon.spy();
             gemini.on(event, spy);
 
-            runner.emit(event, 'value');
-
-            assert.calledOnce(spy);
-            assert.calledWith(spy, 'value');
+            return gemini.test()
+                .then(() => assert.calledOnceWith(spy, 'foo'));
         });
     });
 
@@ -133,33 +126,50 @@ describe('gemini', () => {
     });
 
     describe('load plugins', () => {
-        it('should load plugins', () => {
-            return runGeminiTest()
-                .then(() => assert.calledOnce(pluginsLoader.load));
-        });
+        it('should load plugins on construction', () => {
+            initGemini();
 
-        it('should load plugins before reading tests', () => {
-            return runGeminiTest()
-                .then(() => assert.callOrder(pluginsLoader.load, testReaderStub));
+            assert.calledOnce(pluginsLoader.load);
         });
 
         it('should load plugins for gemini instance', () => {
             const gemini = initGemini();
 
-            return gemini.test()
-                .then(() => assert.calledWith(pluginsLoader.load, gemini));
+            assert.calledWith(pluginsLoader.load, gemini);
+        });
+
+        it('should fail on plugin load error', () => {
+            pluginsLoader.load.throws(new Error('o.O'));
+
+            assert.throws(() => initGemini(), /o.O/);
         });
 
         it('should load plugins from config', () => {
-            return runGeminiTest({plugins: {'some-plugin': true}})
-                .then(() => assert.calledWith(pluginsLoader.load, sinon.match.any, {'some-plugin': true}));
+            initGemini({plugins: {'some-plugin': true}});
+
+            assert.calledWith(pluginsLoader.load, sinon.match.any, {'some-plugin': true});
         });
 
         it('should load plugins with appropriate prefix', () => {
             const prefix = require('../../package').name + '-';
 
-            return runGeminiTest()
-                .then(() => assert.calledWith(pluginsLoader.load, sinon.match.any, sinon.match.any, prefix));
+            initGemini();
+
+            assert.calledWith(pluginsLoader.load, sinon.match.any, sinon.match.any, prefix);
+        });
+    });
+
+    describe('extendCli', () => {
+        it ('should emit CLI event with passed parser', () => {
+            const gemini = initGemini({});
+            const onCli = sinon.spy().named('onCli');
+            const parser = {foo: 'bar'};
+
+            gemini.on(Events.CLI, onCli);
+
+            gemini.extendCli(parser);
+
+            assert.calledOnceWith(onCli, parser);
         });
     });
 
@@ -174,6 +184,46 @@ describe('gemini', () => {
             sandbox.stub(Config.prototype);
 
             Config.prototype.getBrowserIds.returns([]);
+        });
+
+        describe('INIT', () => {
+            it('should emit INIT event on reading', () => {
+                const onInit = sinon.spy();
+
+                gemini = initGemini()
+                    .on(Events.INIT, onInit);
+
+                return gemini.readTests()
+                    .then(() => assert.calledOnce(onInit));
+            });
+
+            it('should wait INIT handler before reading any test', () => {
+                const afterInit = sinon.spy();
+
+                gemini = initGemini()
+                    .on(Events.INIT, () => Promise.delay(10).then(afterInit));
+
+                return gemini.readTests()
+                    .then(() => assert.callOrder(afterInit, testReaderStub));
+            });
+
+            it('should fail on INIT handler reject', () => {
+                gemini = initGemini()
+                    .on(Events.INIT, () => Promise.reject('o.O'));
+
+                return assert.isRejected(gemini.readTests(), /o.O/);
+            });
+
+            it('should emit INIT only once', () => {
+                const onInit = sinon.spy();
+
+                gemini = initGemini()
+                    .on(Events.INIT, onInit);
+
+                return gemini.readTests()
+                    .then(() => gemini.readTests())
+                    .then(() => assert.calledOnce(onInit));
+            });
         });
 
         it('should pass sets from cli to test-reader', () => {
@@ -208,9 +258,16 @@ describe('gemini', () => {
 
         it('should return SuiteCollection instance', () => {
             return readTests_()
-                .then((result) => {
-                    assert.instanceOf(result, SuiteCollection);
-                });
+                .then((result) => assert.instanceOf(result, SuiteCollection));
+        });
+
+        it('should emit AFTER_TESTS_READ event with created suite collection', () => {
+            const onAfterTestRead = sinon.spy();
+            gemini = initGemini();
+            gemini.on(Events.AFTER_TESTS_READ, onAfterTestRead);
+
+            return gemini.readTests()
+                .then((suiteCollection) => assert.calledOnceWith(onAfterTestRead, {suiteCollection}));
         });
 
         it('should add to suite collection all read tests excluding root', () => {
@@ -303,13 +360,6 @@ describe('gemini', () => {
                     assert.include(allSuites, matchingBranchLeaf);
                 });
         });
-
-        it('should warn if RegExp was passed instead of object', () => {
-            return readTests_(null, new RegExp(/string/))
-                .then(() => assert.calledWith(console.warn, sinon.match(
-                    'Passing grep to readTests is deprecated. You should pass an object with options: {grep: /string/}.'
-                )));
-        });
     });
 
     describe('test', () => {
@@ -318,10 +368,8 @@ describe('gemini', () => {
         });
 
         it('should initialize temp with specified temp dir', () => {
-            runGeminiTest({tempDir: '/some/dir'});
-
-            assert.calledOnce(temp.init);
-            assert.calledWith(temp.init, '/some/dir');
+            return runGeminiTest({tempDir: '/some/dir'})
+                .then(() => assert.calledOnceWith(temp.init, '/some/dir'));
         });
 
         it('should initialize temp before start runner', () => {
@@ -332,6 +380,55 @@ describe('gemini', () => {
                         Runner.prototype.run
                     );
                 });
+        });
+
+        it('should emit AFTER_TESTS_READ event with suite collection', () => {
+            const onAfterTestRead = sinon.spy();
+            gemini = initGemini();
+            gemini.on(Events.AFTER_TESTS_READ, onAfterTestRead);
+
+            return gemini.test()
+                .then(() => assert.calledOnceWith(onAfterTestRead, {suiteCollection: sinon.match.instanceOf(SuiteCollection)}));
+        });
+
+        describe('INIT', () => {
+            it('should emit INIT event on run', () => {
+                const onInit = sinon.spy();
+
+                gemini = initGemini()
+                    .on(Events.INIT, onInit);
+
+                return gemini.test()
+                    .then(() => assert.calledOnce(onInit));
+            });
+
+            it('should wait INIT handler before run', () => {
+                const afterInit = sinon.spy();
+
+                gemini = initGemini()
+                    .on(Events.INIT, () => Promise.delay(10).then(afterInit));
+
+                return gemini.test()
+                    .then(() => assert.callOrder(afterInit, Runner.prototype.run));
+            });
+
+            it('should fail on INIT handler reject', () => {
+                gemini = initGemini()
+                    .on(Events.INIT, () => Promise.reject('o.O'));
+
+                return assert.isRejected(gemini.test(), /o.O/);
+            });
+
+            it('should emit INIT only once', () => {
+                const onInit = sinon.spy();
+
+                gemini = initGemini()
+                    .on(Events.INIT, onInit);
+
+                return gemini.test()
+                    .then(() => gemini.test())
+                    .then(() => assert.calledOnce(onInit));
+            });
         });
     });
 

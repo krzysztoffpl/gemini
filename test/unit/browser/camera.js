@@ -51,7 +51,7 @@ describe('browser/camera', function() {
                 error = new Error('not today');
 
             wd.takeScreenshot
-                .onSecondCall().returns(Promise.reject(error));
+                .onSecondCall().rejects(error);
 
             var camera = new Camera(wd),
                 result = camera.captureViewportImage()
@@ -69,7 +69,7 @@ describe('browser/camera', function() {
             var wd = mkWdStub_();
 
             wd.takeScreenshot
-                .onFirstCall().returns(Promise.reject(new Error('not today')));
+                .onFirstCall().rejects(new Error('not today'));
 
             var camera = new Camera(wd);
             return camera.captureViewportImage()
@@ -82,7 +82,7 @@ describe('browser/camera', function() {
             var wd = mkWdStub_();
 
             wd.takeScreenshot
-                .onFirstCall().returns(Promise.reject(new Error('not today')));
+                .onFirstCall().rejects((new Error('not today')));
 
             var camera = new Camera(wd);
             return camera.captureViewportImage()
@@ -96,7 +96,7 @@ describe('browser/camera', function() {
 
             wd.currentContext.returns(Promise.resolve('Original'));
             wd.takeScreenshot
-                .onFirstCall().returns(Promise.reject(new Error('not today')));
+                .onFirstCall().rejects(new Error('not today'));
 
             var camera = new Camera(wd);
             return camera.captureViewportImage()
@@ -110,8 +110,8 @@ describe('browser/camera', function() {
                 originalError = new Error('Original');
 
             wd.takeScreenshot
-                .onFirstCall().returns(Promise.reject(originalError))
-                .onSecondCall().returns(Promise.reject(new Error('still does not work')));
+                .onFirstCall().rejects(originalError)
+                .onSecondCall().rejects(new Error('still does not work'));
 
             var camera = new Camera(wd);
             return assert.isRejected(camera.captureViewportImage(), originalError);
@@ -122,8 +122,8 @@ describe('browser/camera', function() {
                 error = new Error('not today');
 
             wd.takeScreenshot
-                .onFirstCall().returns(Promise.reject(error))
-                .onThirdCall().returns(Promise.reject(error));
+                .onFirstCall().rejects(error)
+                .onThirdCall().rejects(error);
 
             var camera = new Camera(wd);
             return assert.isRejected(camera.captureViewportImage()

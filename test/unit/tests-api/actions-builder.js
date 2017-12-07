@@ -9,7 +9,7 @@ describe('tests-api/actions-builder', () => {
     const sandbox = sinon.sandbox.create();
     const browser = util.makeBrowser();
 
-    const mkActionsBuilder = (actions) => new ActionsBuilder(actions || []);
+    const mkActionsBuilder = (actions) => ActionsBuilder.create(actions || []);
 
     const mkAction = (actionName, browser, postActions) => {
         return function() {
@@ -64,14 +64,14 @@ describe('tests-api/actions-builder', () => {
         });
 
         it('should be rejected if getting of orientation fails', () => {
-            browser.getOrientation.returns(Promise.reject('awesome error'));
+            browser.getOrientation.rejects('awesome error');
             const changeOrientation = mkAction('changeOrientation', browser);
 
             return assert.isRejected(changeOrientation(), /awesome error/);
         });
 
         it('should be rejected if setting of orientation fails', () => {
-            browser.setOrientation.returns(Promise.reject('awesome error'));
+            browser.setOrientation.rejects('awesome error');
             const changeOrientation = mkAction('changeOrientation', browser);
 
             return assert.isRejected(changeOrientation(), /awesome error/);
@@ -160,6 +160,26 @@ describe('tests-api/actions-builder', () => {
 
                 assert.throws(() => mouseUp('.some-selector', 3), /Mouse button should be/);
             });
+        });
+    });
+
+    describe('waitForElementToShow', () => {
+        beforeEach(() => sandbox.stub(browser, 'waitForElementByCssSelector').resolves());
+
+        const waitForElementToShowAction = (selector, timeout) => mkAction('waitForElementToShow', browser)(selector, timeout);
+
+        it('should throw if passed timeout is not a number', () => {
+            assert.throws(() => waitForElementToShowAction('.some-selector', 'string'),
+                /waitForElementToShow accepts only numeric timeout/);
+        });
+
+        it('should not throw if timeout is not passed', () => {
+            assert.doesNotThrow(() => waitForElementToShowAction('.some-selector'));
+        });
+
+        it('should use passed numeric timeout', () => {
+            return waitForElementToShowAction('.some-selector', 100500)
+                .then(() => assert.calledOnceWith(browser.waitForElementByCssSelector, sinon.match.any, sinon.match.any, 100500));
         });
     });
 });
